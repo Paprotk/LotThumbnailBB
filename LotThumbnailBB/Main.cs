@@ -3,39 +3,34 @@ using HarmonyLib;
 using UnityEngine;
 using UnityEngine.UI;
 
-[BepInPlugin("com.arro.LotThumbnailBB", "LotThumbnailBB", "1.0.0")]
-public class LotThumbnailButtonPlugin : BaseUnityPlugin
+[BepInPlugin("Arro.LotThumbnailBB", "LotThumbnailBB", "1.0.0")]
+public class LotThumbnailBB : BaseUnityPlugin
 {
     void Awake()
     {
-        var harmony = new Harmony("com.arro.LotThumbnailBB");
+        var harmony = new Harmony("Arro.LotThumbnailBB");
         harmony.PatchAll();
         Logger.LogInfo("LotThumbnailBB Loaded");
     }
 }
 
-[HarmonyPatch(typeof(UICharacters), "OnShow")]
-public class UICharactersPatch
+public static class ThumbnailHelper
 {
-    static void Postfix(UICharacters __instance)
-    {
-        __instance.StartCoroutine(ApplyThumbnail(__instance));
-    }
-
-    static System.Collections.IEnumerator ApplyThumbnail(UICharacters uiChars)
+    public static System.Collections.IEnumerator ApplyThumbnail(UICharacters uiChars)
     {
         yield return new WaitForSeconds(0.5f);
 
-        if (LotManager.Instance == null || LotManager.Instance.Lots.Count == 0) yield break;
+        if (uiChars == null) yield break;
+        if (LotManager.Instance == null) yield break;
+        if (HouseholdManager.Instance == null) yield break;
 
-        Sprite lotSprite;
-        var lotInfo = Object.FindObjectOfType<UILotInfo>();
+        var household = HouseholdManager.Instance.CurrentHousehold;
+        if (household == null || household.Data.OwnedLots.Count == 0) yield break;
 
-        if (lotInfo != null && lotInfo.LotThumbnail.sprite != null)
-            lotSprite = lotInfo.LotThumbnail.sprite;
-        else
-            lotSprite = LotManager.Instance.Lots[0].ThumbnailSprite;
+        var lot = LotManager.Instance.GetLotByGUID(household.Data.OwnedLots[0]);
+        if (lot == null) yield break;
 
+        var lotSprite = lot.ThumbnailSprite;
         if (lotSprite == null) yield break;
 
         var images = uiChars.ButtonBuildMode.GetComponentsInChildren<Image>();
@@ -53,11 +48,33 @@ public class UICharactersPatch
                 rect.offsetMin = Vector2.zero;
                 rect.offsetMax = Vector2.zero;
 
-                var fitter = img.gameObject.GetComponent<AspectRatioFitter>()
-                          ?? img.gameObject.AddComponent<AspectRatioFitter>();
+                var oldFitter = img.gameObject.GetComponent<AspectRatioFitter>();
+                if (oldFitter != null) Object.DestroyImmediate(oldFitter);
+
+                var fitter = img.gameObject.AddComponent<AspectRatioFitter>();
                 fitter.aspectMode = AspectRatioFitter.AspectMode.EnvelopeParent;
                 fitter.aspectRatio = lotSprite.texture.width / (float)lotSprite.texture.height;
             }
         }
+    }
+}
+
+[HarmonyPatch(typeof(UICharacters), "OnShow")]
+public class UICharactersPatch
+{
+    static void Postfix(UICharacters __instance)
+    {
+        __instance.StartCoroutine(ThumbnailHelper.ApplyThumbnail(__instance));
+    }
+}
+
+[HarmonyPatch(typeof(UILotInfo), "ChangeHousehold")]
+public class HouseholdChangePatch
+{
+    static void Postfix()
+    {
+        var uiChars = Object.FindObjectOfType<UICharacters>();
+        if (uiChars == null) return;
+        uiChars.StartCoroutine(ThumbnailHelper.ApplyThumbnail(uiChars));
     }
 }
