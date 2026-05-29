@@ -1,0 +1,16 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LotThumbnailBB", "LotThumbnailBB\LotThumbnailBB.csproj", "{BB531C5F-52E7-4012-8145-EC041D059049}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{BB531C5F-52E7-4012-8145-EC041D059049}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BB531C5F-52E7-4012-8145-EC041D059049}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BB531C5F-52E7-4012-8145-EC041D059049}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BB531C5F-52E7-4012-8145-EC041D059049}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
