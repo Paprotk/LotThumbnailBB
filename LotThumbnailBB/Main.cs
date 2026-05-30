@@ -1,7 +1,9 @@
+using System;
 using BepInEx;
 using HarmonyLib;
 using UnityEngine;
 using UnityEngine.UI;
+using Object = UnityEngine.Object;
 
 [BepInPlugin("Arro.LotThumbnailBB", "LotThumbnailBB", "1.0.0")]
 public class LotThumbnailBB : BaseUnityPlugin
@@ -76,5 +78,56 @@ public class HouseholdChangePatch
         var uiChars = Object.FindObjectOfType<UICharacters>();
         if (uiChars == null) return;
         uiChars.StartCoroutine(ThumbnailHelper.ApplyThumbnail(uiChars));
+    }
+}
+
+[HarmonyPatch(typeof(SetPlayerLiveModeEvent), "UpdateMessage")]
+public class SetPlayerLiveModePatch
+{
+    static void Postfix(MessageSetPlayerLiveMode message)
+    {
+        var uiChars = Object.FindObjectOfType<UICharacters>();
+        if (uiChars == null) return;
+        uiChars.StartCoroutine(RefreshAndCapture(message.PlayerIndex, uiChars));
+    }
+
+    static System.Collections.IEnumerator RefreshAndCapture(int playerIndex, UICharacters uiChars)
+    {
+        var household = HouseholdManager.Instance?.CurrentHousehold;
+        if (household == null || household.Data.OwnedLots.Count == 0) yield break;
+
+        ulong lotGUID = household.Data.OwnedLots[0];
+        Player player = PlayerManager.Instance.Players[playerIndex];
+
+        ValueTuple<int, int, int> originalLayer = player.LotLayers.ContainsKey(lotGUID)
+            ? player.LotLayers[lotGUID]
+            : new ValueTuple<int, int, int>(0, 0, 0);
+
+        if (player.LotLayers.ContainsKey(lotGUID))
+        {
+            var layers = player.LotLayers[lotGUID];
+            player.LotLayers[lotGUID] = new ValueTuple<int, int, int>(
+                int.MaxValue,
+                layers.Item2,
+                layers.Item3
+            );
+            BuildModeRefreshManager.IsFloorLayerVisibilityRefreshed = false;
+        }
+        
+        yield return new WaitForEndOfFrame();
+        yield return new WaitForEndOfFrame();
+        yield return new WaitForEndOfFrame();
+
+        PremadeLotThumbnailManager.Instance.CreateRequest(lotGUID, delegate()
+        {
+            var lot = LotManager.Instance.GetLotByGUID(lotGUID);
+            if (lot == null) return;
+            lot.SaveThumbnailTexture(PremadeLotThumbnailManager.Instance.CurrentThumbnail);
+
+            player.LotLayers[lotGUID] = originalLayer;
+            BuildModeRefreshManager.IsFloorLayerVisibilityRefreshed = false;
+
+            uiChars.StartCoroutine(ThumbnailHelper.ApplyThumbnail(uiChars));
+        }, false);
     }
 }
