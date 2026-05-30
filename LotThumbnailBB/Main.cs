@@ -99,6 +99,18 @@ public class SetPlayerLiveModePatch
         ulong lotGUID = household.Data.OwnedLots[0];
         Player player = PlayerManager.Instance.Players[playerIndex];
 
+        var zone = ZoneManager.Instance.GetLotPerimeterZoneObjectByGUID(lotGUID);
+        
+        Vector3 savedCamPos = Vector3.zero;
+        Quaternion savedCamRot = Quaternion.identity;
+        if (zone != null)
+        {
+            savedCamPos = zone.CameraPositionForThumbnail;
+            savedCamRot = zone.CameraRotationForThumbnail;
+            zone.CameraPositionForThumbnail = Vector3.zero;
+            zone.CameraRotationForThumbnail = Quaternion.identity;
+        }
+
         ValueTuple<int, int, int> originalLayer = player.LotLayers.TryGetValue(lotGUID, out var layer)
             ? layer
             : new ValueTuple<int, int, int>(0, 0, 0);
@@ -113,7 +125,7 @@ public class SetPlayerLiveModePatch
             );
             BuildModeRefreshManager.IsFloorLayerVisibilityRefreshed = false;
         }
-        
+
         yield return new WaitForEndOfFrame();
         yield return new WaitForEndOfFrame();
         yield return new WaitForEndOfFrame();
@@ -123,6 +135,12 @@ public class SetPlayerLiveModePatch
             var lot = LotManager.Instance.GetLotByGUID(lotGUID);
             if (lot == null) return;
             lot.SaveThumbnailTexture(PremadeLotThumbnailManager.Instance.CurrentThumbnail);
+            
+            if (zone != null)
+            {
+                zone.CameraPositionForThumbnail = savedCamPos;
+                zone.CameraRotationForThumbnail = savedCamRot;
+            }
 
             player.LotLayers[lotGUID] = originalLayer;
             BuildModeRefreshManager.IsFloorLayerVisibilityRefreshed = false;
