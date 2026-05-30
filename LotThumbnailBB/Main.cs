@@ -99,8 +99,8 @@ public class SetPlayerLiveModePatch
         ulong lotGUID = household.Data.OwnedLots[0];
         Player player = PlayerManager.Instance.Players[playerIndex];
 
-        ValueTuple<int, int, int> originalLayer = player.LotLayers.ContainsKey(lotGUID)
-            ? player.LotLayers[lotGUID]
+        ValueTuple<int, int, int> originalLayer = player.LotLayers.TryGetValue(lotGUID, out var layer)
+            ? layer
             : new ValueTuple<int, int, int>(0, 0, 0);
 
         if (player.LotLayers.ContainsKey(lotGUID))
@@ -108,8 +108,8 @@ public class SetPlayerLiveModePatch
             var layers = player.LotLayers[lotGUID];
             player.LotLayers[lotGUID] = new ValueTuple<int, int, int>(
                 int.MaxValue,
-                layers.Item2,
-                layers.Item3
+                layers.min,
+                layers.max
             );
             BuildModeRefreshManager.IsFloorLayerVisibilityRefreshed = false;
         }
@@ -118,7 +118,7 @@ public class SetPlayerLiveModePatch
         yield return new WaitForEndOfFrame();
         yield return new WaitForEndOfFrame();
 
-        PremadeLotThumbnailManager.Instance.CreateRequest(lotGUID, delegate()
+        PremadeLotThumbnailManager.Instance.CreateRequest(lotGUID, delegate
         {
             var lot = LotManager.Instance.GetLotByGUID(lotGUID);
             if (lot == null) return;
